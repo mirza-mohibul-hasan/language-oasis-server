@@ -38,12 +38,22 @@ const client = new MongoClient(uri, {
         strict: true,
         deprecationErrors: true,
     }
+    ,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    maxPoolSize: 10,
 });
 
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
+        client.connect((err) => {
+            if (err) {
+                console.log(err)
+                return;
+            }
+        });
         /* Works here */
         const usersCollection = client.db("languageDb").collection("users");
         const classCollection = client.db("languageDb").collection("classes");
@@ -107,7 +117,7 @@ async function run() {
         })
 
         // All Classes student count and seats
-        app.patch('/users/updateapprovedclass/:id',verifyJWT, async (req, res) => {
+        app.patch('/users/updateapprovedclass/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await classCollection.findOne(query);
@@ -117,7 +127,7 @@ async function run() {
             const updateDoc = {
                 $set: {
                     seats: newSeats,
-                    students: newStudents 
+                    students: newStudents
                 },
             };
 
@@ -144,6 +154,15 @@ async function run() {
                 return res.status(403).send({ error: true, message: 'forbidden access' })
             }
             const query = { email: email, paymentStatus: 'booked' };
+            const result = await userClassCollection.find(query).toArray();
+            res.send(result);
+        });
+        app.get('/enrolledclasses', async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                res.send([]);
+            }
+            const query = { email: email, paymentStatus: 'paid' };
             const result = await userClassCollection.find(query).toArray();
             res.send(result);
         });
