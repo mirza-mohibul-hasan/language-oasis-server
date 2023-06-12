@@ -46,6 +46,7 @@ async function run() {
         await client.connect();
         /* Works here */
         const usersCollection = client.db("languageDb").collection("users");
+        const classCollection = client.db("languageDb").collection("classes");
 
         // JWT Token
         app.post('/jwt', (req, res) => {
@@ -75,6 +76,11 @@ async function run() {
             next();
         }
 
+        // Common
+        app.get('/popularclass',async (req, res) => {
+            const result = await classCollection.find().sort({students: -1}).toArray();
+            res.send(result);
+        });
         // users related apis
         app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await usersCollection.find().toArray();
@@ -94,7 +100,8 @@ async function run() {
             const result = await usersCollection.insertOne(user);
             res.send(result);
         });
-        // Instructor related api
+
+        /* Instructor related api */
         // check Instructor
         app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
@@ -108,7 +115,7 @@ async function run() {
             const result = { instructor: user?.role === 'instructor' }
             res.send(result);
         })
-        // Admin Related Api
+        /* Admin Related Api */
         // check admin
         app.get('/users/admin/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
