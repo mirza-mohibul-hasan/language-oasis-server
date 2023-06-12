@@ -47,6 +47,7 @@ async function run() {
         /* Works here */
         const usersCollection = client.db("languageDb").collection("users");
         const classCollection = client.db("languageDb").collection("classes");
+        const userClassCollection = client.db("languageDb").collection("userclass");
 
         // JWT Token
         app.post('/jwt', (req, res) => {
@@ -77,13 +78,14 @@ async function run() {
         }
 
         // Common
-        app.get('/popularclass',async (req, res) => {
-            const result = await classCollection.find().sort({students: -1}).limit(6).toArray();
+        app.get('/popularclass', async (req, res) => {
+            const query = { status: 'approved' }
+            const result = await classCollection.find(query).sort({ students: -1 }).limit(6).toArray();
             res.send(result);
         });
-        // Common
-        app.get('/classes',async (req, res) => {
-            const result = await classCollection.find().toArray();
+        app.get('/classes', async (req, res) => {
+            const query = { status: 'approved' }
+            const result = await classCollection.find(query).toArray();
             res.send(result);
         });
         // users related apis
@@ -91,6 +93,13 @@ async function run() {
             const result = await usersCollection.find().toArray();
             res.send(result);
         });
+
+        // User Selected and Approved Class
+        app.post('/userclasses', async (req, res) => {
+            const item = req.body;
+            const result = await cartCollection.insertOne(item);
+            res.send(result);
+        })
 
         // For saving registered user
         app.post('/users', async (req, res) => {
