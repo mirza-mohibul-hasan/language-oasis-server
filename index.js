@@ -106,17 +106,21 @@ async function run() {
             if (!email) {
               res.send([]);
             }
-            console.log(email)
-      
-            const decodedEmail = req.decoded.email;
-            if (email !== decodedEmail) {
-              return res.status(403).send({ error: true, message: 'forbidden access' })
-            }
-      
+            // const decodedEmail = req?.decoded?.email;
+            // if (email !== decodedEmail) {
+            //   return res.status(403).send({ error: true, message: 'forbidden access' })
+            // }
             const query = { email: email, paymentStatus: 'booked' };
             const result = await userClassCollection.find(query).toArray();
             res.send(result);
           });
+
+          app.delete('/bookedclass/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await userClassCollection.deleteOne(query);
+            res.send(result);
+          })
 
         // For saving registered user
         app.post('/users', async (req, res) => {
