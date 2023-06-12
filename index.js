@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config()
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
@@ -47,6 +48,7 @@ async function run() {
         const usersCollection = client.db("languageDb").collection("users");
         const classCollection = client.db("languageDb").collection("classes");
         const userClassCollection = client.db("languageDb").collection("userclass");
+        const paymentCollection = client.db("languageDb").collection("payments");
 
         // JWT Token
         app.post('/jwt', (req, res) => {
@@ -103,8 +105,27 @@ async function run() {
             const instructors = await usersCollection.find(query).toArray();
             res.send(instructors);
         })
+
+        // All Classes student count and seats
+        app.patch('/users/updateapprovedclass/:id',verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await classCollection.findOne(query);
+            console.log(result)
+            const newSeats = (result?.seats) - 1;
+            const newStudents = (result?.students) + 1;
+            const updateDoc = {
+                $set: {
+                    seats: newSeats,
+                    students: newStudents 
+                },
+            };
+
+            const insertedresult = await classCollection.updateOne(query, updateDoc);
+            res.send(insertedresult);
+
+        })
         /* Common End*/
-*
         /* users related apis */
         // User add selected classes for booked and pay
         app.post('/userclasses', verifyJWT, async (req, res) => {
@@ -148,7 +169,22 @@ async function run() {
             res.send(result);
         });
 
+        // Update Class Status
+        app.patch('/users/student/paidclass/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const paymentStatus = req.query.paymentStatus;
+            // console.log(id, status);
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    paymentStatus: paymentStatus
+                },
+            };
 
+            const result = await userClassCollection.updateOne(filter, updateDoc);
+            res.send(result);
+
+        })
         /* Instructor related api */
         // check Instructor
         app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
@@ -252,6 +288,38 @@ async function run() {
             const result = await classCollection.find().toArray();
             res.send(result);
         });
+
+
+        /* Payment Related API */
+        // Payment Details
+        app.get('/payment/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await userClassCollection.findOne(query);
+            res.send(result);
+        })
+        // payment intent
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+            // console.log(paymentIntent.client_secret)
+        })
+
+        app.post('/payments', verifyJWT, async (req, res) => {
+            const payment = req.body;
+            const result = await paymentCollection.insertOne(payment);
+            res.send(result);
+        })
+
         /* Working zone end */
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
