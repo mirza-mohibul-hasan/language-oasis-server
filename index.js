@@ -6,11 +6,11 @@ require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
-// middleware
+// Middleware 
 app.use(cors());
 app.use(express.json());
 
-// For JWT verification
+/* Verfication start here */
 const verifyJWT = (req, res, next) => {
     const authorization = req.headers.authorization;
     if (!authorization) {
@@ -18,8 +18,8 @@ const verifyJWT = (req, res, next) => {
     }
     const token = authorization.split(' ')[1];
 
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-        if (err) {
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded) => {
+        if (error) {
             return res.status(401).send({ error: true, message: 'unauthorized access' })
         }
         req.decoded = decoded;
@@ -85,6 +85,7 @@ async function run() {
             next();
         }
 
+
         /* Common */
         app.get('/popularclass', async (req, res) => {
             const query = { status: 'approved' }
@@ -96,41 +97,37 @@ async function run() {
             const result = await classCollection.find(query).toArray();
             res.send(result);
         });
-        /* Common End*/
-        //Get Instructors
+        //Get Instructors for Instructor Page
         app.get('/instructors', async (req, res) => {
             const query = { role: 'instructor' }
             const instructors = await usersCollection.find(query).toArray();
             res.send(instructors);
         })
-        // users related apis
-        app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
-            const result = await usersCollection.find().toArray();
-            res.send(result);
-        });
-
-        // User Selected and Approved Class
-        app.post('/userclasses',verifyJWT, async (req, res) => {
+        /* Common End*/
+*
+        /* users related apis */
+        // User add selected classes for booked and pay
+        app.post('/userclasses', verifyJWT, async (req, res) => {
             const item = req.body;
             const result = await userClassCollection.insertOne(item);
             res.send(result);
         })
-        // User Selected Classes
-        app.get('/bookedclass',verifyJWT, async (req, res) => {
+        // Student dashbord Selected Classes
+        app.get('/bookedclass', verifyJWT, verifyStudent, async (req, res) => {
             const email = req.query.email;
             if (!email) {
                 res.send([]);
             }
             const decodedEmail = req?.decoded?.email;
             if (email !== decodedEmail) {
-              return res.status(403).send({ error: true, message: 'forbidden access' })
+                return res.status(403).send({ error: true, message: 'forbidden access' })
             }
             const query = { email: email, paymentStatus: 'booked' };
             const result = await userClassCollection.find(query).toArray();
             res.send(result);
         });
 
-        app.delete('/bookedclass/:id',verifyJWT, async (req, res) => {
+        app.delete('/bookedclass/:id', verifyJWT, verifyStudent, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await userClassCollection.deleteOne(query);
@@ -151,18 +148,21 @@ async function run() {
             res.send(result);
         });
 
+
         /* Instructor related api */
         // check Instructor
         app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
-            const email = req.params.email;
+            const email = req?.params?.email;
+            // console.log(email)
 
-            if (req.decoded.email !== email) {
-                res.send({ instructor: false })
-            }
+            // if (req?.decoded?.email !== email) {
+            //     return res.send({ instructor: false })
+            // }
 
             const query = { email: email }
             const user = await usersCollection.findOne(query);
             const result = { instructor: user?.role === 'instructor' }
+            // console.log(result)
             res.send(result);
         })
         // Add Class
@@ -172,31 +172,32 @@ async function run() {
             res.send(result);
         })
         // Instructor added Classes
-        app.get('/myclasses',verifyJWT, verifyInstructor, async (req, res) => {
+        app.get('/myclasses', verifyJWT, verifyInstructor, async (req, res) => {
             const email = req.query.email;
             if (!email) {
                 res.send([]);
             }
-            const query = {instructorEmail: email};
+            const query = { instructorEmail: email };
             const result = await classCollection.find(query).toArray();
             res.send(result);
         });
+
+
         /* Admin Related Api */
         // check admin
-        app.get('/users/admin/:email', verifyJWT, async (req, res) => {
-            const email = req.params.email;
+        app.get('/users/admin/checkadmin/:email', verifyJWT, async (req, res) => {
+            const email = req?.params?.email;
 
-            if (req.decoded.email !== email) {
-                res.send({ admin: false })
-            }
-
+            // if (req?.decoded?.email !== email) {
+            //     return res.send({ admin: false })
+            // }
             const query = { email: email }
             const user = await usersCollection.findOne(query);
             const result = { admin: user?.role === 'admin' }
             res.send(result);
         })
         // Update User Role
-        app.patch('/users/admin/:id',verifyJWT, verifyAdmin, async (req, res) => {
+        app.patch('/users/admin/roleupdate/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const role = req.query.role;
             // console.log(role);
@@ -212,7 +213,7 @@ async function run() {
 
         })
         // Update Class Status
-        app.patch('/users/admin/classupdate/:id',verifyJWT, verifyAdmin, async (req, res) => {
+        app.patch('/users/admin/classupdate/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const status = req.query.status;
             console.log(id, status);
@@ -243,7 +244,11 @@ async function run() {
             res.send(result);
 
         })
-        app.get('/users/admin', verifyJWT, verifyAdmin, async (req, res) => {
+        app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
+            const result = await usersCollection.find().toArray();
+            res.send(result);
+        });
+        app.get('/users/admin/allclass', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await classCollection.find().toArray();
             res.send(result);
         });
