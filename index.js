@@ -90,7 +90,7 @@ async function run() {
         });
         //Get Instructors
         app.get('/instructors', async (req, res) => {
-            const query = {role:'instructor'}
+            const query = { role: 'instructor' }
             const instructors = await usersCollection.find(query).toArray();
             res.send(instructors);
         })
@@ -110,7 +110,7 @@ async function run() {
         app.get('/bookedclass', async (req, res) => {
             const email = req.query.email;
             if (!email) {
-              res.send([]);
+                res.send([]);
             }
             // const decodedEmail = req?.decoded?.email;
             // if (email !== decodedEmail) {
@@ -119,14 +119,14 @@ async function run() {
             const query = { email: email, paymentStatus: 'booked' };
             const result = await userClassCollection.find(query).toArray();
             res.send(result);
-          });
+        });
 
-          app.delete('/bookedclass/:id', async (req, res) => {
+        app.delete('/bookedclass/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await userClassCollection.deleteOne(query);
             res.send(result);
-          })
+        })
 
         // For saving registered user
         app.post('/users', async (req, res) => {
@@ -154,6 +154,12 @@ async function run() {
             const query = { email: email }
             const user = await usersCollection.findOne(query);
             const result = { instructor: user?.role === 'instructor' }
+            res.send(result);
+        })
+        // Add Class
+        app.post('/classes', verifyJWT, verifyInstructor, async (req, res) => {
+            const newItem = req.body;
+            const result = await classCollection.insertOne(newItem)
             res.send(result);
         })
         /* Admin Related Api */
