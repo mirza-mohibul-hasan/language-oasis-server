@@ -162,6 +162,16 @@ async function run() {
             const result = await classCollection.insertOne(newItem)
             res.send(result);
         })
+        // Instructor added Classes
+        app.get('/myclasses', async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                res.send([]);
+            }
+            const query = {instructorEmail: email};
+            const result = await classCollection.find(query).toArray();
+            res.send(result);
+        });
         /* Admin Related Api */
         // check admin
         app.get('/users/admin/:email', verifyJWT, async (req, res) => {
@@ -180,7 +190,7 @@ async function run() {
         app.patch('/users/admin/:id', async (req, res) => {
             const id = req.params.id;
             const role = req.query.role;
-            console.log(role);
+            // console.log(role);
             const filter = { _id: new ObjectId(id) };
             const updateDoc = {
                 $set: {
@@ -192,6 +202,42 @@ async function run() {
             res.send(result);
 
         })
+        // Update Class Status
+        app.patch('/users/admin/classupdate/:id', async (req, res) => {
+            const id = req.params.id;
+            const status = req.query.status;
+            console.log(id, status);
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    status: status
+                },
+            };
+
+            const result = await classCollection.updateOne(filter, updateDoc);
+            res.send(result);
+
+        })
+        // Add feedback
+        app.patch('/users/admin/feedbackupdate/:id', async (req, res) => {
+            const id = req.params.id;
+            const feedback = req.query.feedback;
+            console.log(id, feedback);
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    feedback: feedback
+                },
+            };
+
+            const result = await classCollection.updateOne(filter, updateDoc);
+            res.send(result);
+
+        })
+        app.get('/users/admin', verifyJWT, verifyAdmin, async (req, res) => {
+            const result = await classCollection.find().toArray();
+            res.send(result);
+        });
         /* Working zone end */
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
