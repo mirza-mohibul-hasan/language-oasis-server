@@ -78,7 +78,12 @@ async function run() {
 
         // Common
         app.get('/popularclass',async (req, res) => {
-            const result = await classCollection.find().sort({students: -1}).toArray();
+            const result = await classCollection.find().sort({students: -1}).limit(6).toArray();
+            res.send(result);
+        });
+        // Common
+        app.get('/classes',async (req, res) => {
+            const result = await classCollection.find().toArray();
             res.send(result);
         });
         // users related apis
