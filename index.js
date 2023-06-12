@@ -16,7 +16,6 @@ const verifyJWT = (req, res, next) => {
     if (!authorization) {
         return res.status(401).send({ error: true, message: 'unauthorized access' });
     }
-    // bearer token
     const token = authorization.split(' ')[1];
 
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
@@ -53,7 +52,6 @@ async function run() {
         app.post('/jwt', (req, res) => {
             const user = req.body;
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
-
             res.send({ token })
         })
         // Verify Admin
@@ -76,8 +74,18 @@ async function run() {
             }
             next();
         }
+        // Verify Student
+        const verifyStudent = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await usersCollection.findOne(query);
+            if (user?.role === 'instructor' || user?.role === 'admin') {
+                return res.status(403).send({ error: true, message: 'forbidden message' });
+            }
+            next();
+        }
 
-        // Common
+        /* Common */
         app.get('/popularclass', async (req, res) => {
             const query = { status: 'approved' }
             const result = await classCollection.find(query).sort({ students: -1 }).limit(6).toArray();
@@ -88,6 +96,7 @@ async function run() {
             const result = await classCollection.find(query).toArray();
             res.send(result);
         });
+        /* Common End*/
         //Get Instructors
         app.get('/instructors', async (req, res) => {
             const query = { role: 'instructor' }
@@ -101,27 +110,27 @@ async function run() {
         });
 
         // User Selected and Approved Class
-        app.post('/userclasses', async (req, res) => {
+        app.post('/userclasses',verifyJWT, async (req, res) => {
             const item = req.body;
             const result = await userClassCollection.insertOne(item);
             res.send(result);
         })
         // User Selected Classes
-        app.get('/bookedclass', async (req, res) => {
+        app.get('/bookedclass',verifyJWT, async (req, res) => {
             const email = req.query.email;
             if (!email) {
                 res.send([]);
             }
-            // const decodedEmail = req?.decoded?.email;
-            // if (email !== decodedEmail) {
-            //   return res.status(403).send({ error: true, message: 'forbidden access' })
-            // }
+            const decodedEmail = req?.decoded?.email;
+            if (email !== decodedEmail) {
+              return res.status(403).send({ error: true, message: 'forbidden access' })
+            }
             const query = { email: email, paymentStatus: 'booked' };
             const result = await userClassCollection.find(query).toArray();
             res.send(result);
         });
 
-        app.delete('/bookedclass/:id', async (req, res) => {
+        app.delete('/bookedclass/:id',verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await userClassCollection.deleteOne(query);
@@ -163,7 +172,7 @@ async function run() {
             res.send(result);
         })
         // Instructor added Classes
-        app.get('/myclasses', async (req, res) => {
+        app.get('/myclasses',verifyJWT, verifyInstructor, async (req, res) => {
             const email = req.query.email;
             if (!email) {
                 res.send([]);
@@ -187,7 +196,7 @@ async function run() {
             res.send(result);
         })
         // Update User Role
-        app.patch('/users/admin/:id', async (req, res) => {
+        app.patch('/users/admin/:id',verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const role = req.query.role;
             // console.log(role);
@@ -203,7 +212,7 @@ async function run() {
 
         })
         // Update Class Status
-        app.patch('/users/admin/classupdate/:id', async (req, res) => {
+        app.patch('/users/admin/classupdate/:id',verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const status = req.query.status;
             console.log(id, status);
@@ -219,7 +228,7 @@ async function run() {
 
         })
         // Add feedback
-        app.patch('/users/admin/feedbackupdate/:id', async (req, res) => {
+        app.patch('/users/admin/feedbackupdate/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const feedback = req.query.feedback;
             console.log(id, feedback);
