@@ -97,9 +97,26 @@ async function run() {
         // User Selected and Approved Class
         app.post('/userclasses', async (req, res) => {
             const item = req.body;
-            const result = await cartCollection.insertOne(item);
+            const result = await userClassCollection.insertOne(item);
             res.send(result);
         })
+        // User Selected Classes
+        app.get('/bookedclass', async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+              res.send([]);
+            }
+            console.log(email)
+      
+            const decodedEmail = req.decoded.email;
+            if (email !== decodedEmail) {
+              return res.status(403).send({ error: true, message: 'forbidden access' })
+            }
+      
+            const query = { email: email, paymentStatus: 'booked' };
+            const result = await userClassCollection.find(query).toArray();
+            res.send(result);
+          });
 
         // For saving registered user
         app.post('/users', async (req, res) => {
