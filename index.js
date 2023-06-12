@@ -88,6 +88,12 @@ async function run() {
             const result = await classCollection.find(query).toArray();
             res.send(result);
         });
+        //Get Instructors
+        app.get('/instructors', async (req, res) => {
+            const query = {role:'instructor'}
+            const instructors = await usersCollection.find(query).toArray();
+            res.send(instructors);
+        })
         // users related apis
         app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await usersCollection.find().toArray();
