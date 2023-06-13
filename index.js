@@ -72,7 +72,7 @@ async function run() {
             const query = { email: email }
             const user = await usersCollection.findOne(query);
             if (user?.role !== 'admin') {
-                return res.status(403).send({ error: true, message: 'forbidden message' });
+                return res.status(403).send({ error: true, message: 'forbidden access' });
             }
             next();
         }
@@ -99,11 +99,13 @@ async function run() {
 
 
         /* Common */
+        // Popular Classes
         app.get('/popularclass', async (req, res) => {
             const query = { status: 'approved' }
             const result = await classCollection.find(query).sort({ students: -1 }).limit(6).toArray();
             res.send(result);
         });
+        // Classes Page api
         app.get('/classes', async (req, res) => {
             const query = { status: 'approved' }
             const result = await classCollection.find(query).toArray();
@@ -116,7 +118,7 @@ async function run() {
             res.send(instructors);
         })
 
-        // All Classes student count and seats
+        // All Classes student count and seats after payment
         app.patch('/users/updateapprovedclass/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
@@ -140,6 +142,13 @@ async function run() {
         // User add selected classes for booked and pay
         app.post('/userclasses', verifyJWT, async (req, res) => {
             const item = req.body;
+            const query = { classId: item.classId }
+            const exists = await userClassCollection.findOne(query);
+
+            if (exists) {
+                return res.send({ message: 'already exists' })
+            }
+
             const result = await userClassCollection.insertOne(item);
             res.send(result);
         })
@@ -157,7 +166,8 @@ async function run() {
             const result = await userClassCollection.find(query).toArray();
             res.send(result);
         });
-        app.get('/enrolledclasses', async (req, res) => {
+        // Student Paid classes
+        app.get('/enrolledclasses', verifyJWT, verifyStudent, async (req, res) => {
             const email = req.query.email;
             if (!email) {
                 res.send([]);
@@ -166,7 +176,7 @@ async function run() {
             const result = await userClassCollection.find(query).toArray();
             res.send(result);
         });
-
+        // Delete from Student Selected class
         app.delete('/bookedclass/:id', verifyJWT, verifyStudent, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
@@ -178,10 +188,10 @@ async function run() {
         app.post('/users', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
-            const existingUser = await usersCollection.findOne(query);
+            const exists = await usersCollection.findOne(query);
 
-            if (existingUser) {
-                return res.send({ message: 'user already exists' })
+            if (exists) {
+                return res.send({ message: 'already exists' })
             }
 
             const result = await usersCollection.insertOne(user);
@@ -204,6 +214,20 @@ async function run() {
             res.send(result);
 
         })
+        // Payment History
+        app.get('/paymenthistory', verifyJWT, verifyStudent, async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                res.send([]);
+            }
+            if (req?.decoded?.email !== email) {
+                return res.send({ student: false })
+            }
+            const query = { email: email }
+            const result = await paymentCollection.find(query).sort({ date: -1 }).toArray();
+            res.send(result);
+        });
+
         /* Instructor related api */
         // check Instructor
         app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
