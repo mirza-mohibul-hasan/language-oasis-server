@@ -265,60 +265,6 @@ async function run() {
             const result = await classCollection.find(query).toArray();
             res.send(result);
         });
-        // Instructor Statistics
-        // app.get('/users/instructor/statistics', async (req, res) => {
-        //     const allclasses = await classCollection.find().toArray();
-        //     const userclasses = await userClassCollection.find().toArray();
-        //     const users = await usersCollection.find().toArray();
-
-        //     const totalClasses = allclasses.length;
-        //     const totalusersCount = users.length;
-        //     const instructorsCount = users.reduce((count, user) => {
-        //         if (user.role === "instructor") {
-        //             return count + 1;
-        //         } else {
-        //             return count;
-        //         }
-        //     }, 0);
-        //     const studentsCount = users.reduce((count, user) => {
-        //         if (user.role !== "instructor" && user.role !== "admin") {
-        //             return count + 1;
-        //         } else {
-        //             return count;
-        //         }
-        //     }, 0);
-        //     const paidUserclassesCount = userclasses.reduce((count, userclass) => {
-        //         if (userclass.paymentStatus === "paid") {
-        //             return count + 1;
-        //         } else {
-        //             return count;
-        //         }
-        //     }, 0);
-        //     const bookedUserclassesCount = userclasses.reduce((count, userclass) => {
-        //         if (userclass.paymentStatus === "booked") {
-        //             return count + 1;
-        //         } else {
-        //             return count;
-        //         }
-        //     }, 0);
-        //     const approvedClassesCount = allclasses.reduce((count, allclass) => {
-        //         if (allclass.status === "approved") {
-        //             return count + 1;
-        //         } else {
-        //             return count;
-        //         }
-        //     }, 0);
-        //     const deniedClassesCount = allclasses.reduce((count, allclass) => {
-        //         if (allclass.status === "denied") {
-        //             return count + 1;
-        //         } else {
-        //             return count;
-        //         }
-        //     }, 0);
-
-        //     const stats = { totalClasses, deniedClassesCount, totalusersCount, instructorsCount, studentsCount, approvedClassesCount, paidUserclassesCount, bookedUserclassesCount }
-        //     res.send(stats);
-        // });
 
         /* Admin Related Api */
         // check admin
