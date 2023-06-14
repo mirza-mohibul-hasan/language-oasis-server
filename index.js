@@ -117,13 +117,18 @@ async function run() {
             const instructors = await usersCollection.find(query).toArray();
             res.send(instructors);
         })
+        // Popular Instructors
+        app.get('/popularinstructors', async (req, res) => {
+            const query = { role: 'instructor' }
+            const instructors = await usersCollection.find(query).limit(6).toArray();
+            res.send(instructors);
+        })
 
         // All Classes student count and seats after payment
         app.patch('/users/updateapprovedclass/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await classCollection.findOne(query);
-            console.log(result)
             const newSeats = (result?.seats) - 1;
             const newStudents = (result?.students) + 1;
             const updateDoc = {
@@ -142,7 +147,7 @@ async function run() {
         // User add selected classes for booked and pay
         app.post('/userclasses', verifyJWT, async (req, res) => {
             const item = req.body;
-            const query = { classId: item.classId }
+            const query = { classId: item.classId, email: item.email}
             const exists = await userClassCollection.findOne(query);
 
             if (exists) {
@@ -204,14 +209,18 @@ async function run() {
             const paymentStatus = req.query.paymentStatus;
             // console.log(id, status);
             const filter = { _id: new ObjectId(id) };
+            const result = await userClassCollection.findOne(filter);
+            const newSeats = (result?.seats) - 1;
+            const newStudents = (result?.students) + 1;
             const updateDoc = {
                 $set: {
-                    paymentStatus: paymentStatus
+                    paymentStatus: paymentStatus,
+                    seats: newSeats,
+                    students: newStudents
                 },
             };
-
-            const result = await userClassCollection.updateOne(filter, updateDoc);
-            res.send(result);
+            const updatedResult = await userClassCollection.updateOne(filter, updateDoc);
+            res.send(updatedResult);
 
         })
         // Payment History
@@ -232,16 +241,12 @@ async function run() {
         // check Instructor
         app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
             const email = req?.params?.email;
-            // console.log(email)
-
-            // if (req?.decoded?.email !== email) {
-            //     return res.send({ instructor: false })
-            // }
-
+            if (req?.decoded?.email !== email) {
+                return res.send({ instructor: false })
+            }
             const query = { email: email }
             const user = await usersCollection.findOne(query);
             const result = { instructor: user?.role === 'instructor' }
-            // console.log(result)
             res.send(result);
         })
         // Add Class
@@ -260,18 +265,72 @@ async function run() {
             const result = await classCollection.find(query).toArray();
             res.send(result);
         });
+        // Instructor Statistics
+        // app.get('/users/instructor/statistics', async (req, res) => {
+        //     const allclasses = await classCollection.find().toArray();
+        //     const userclasses = await userClassCollection.find().toArray();
+        //     const users = await usersCollection.find().toArray();
 
+        //     const totalClasses = allclasses.length;
+        //     const totalusersCount = users.length;
+        //     const instructorsCount = users.reduce((count, user) => {
+        //         if (user.role === "instructor") {
+        //             return count + 1;
+        //         } else {
+        //             return count;
+        //         }
+        //     }, 0);
+        //     const studentsCount = users.reduce((count, user) => {
+        //         if (user.role !== "instructor" && user.role !== "admin") {
+        //             return count + 1;
+        //         } else {
+        //             return count;
+        //         }
+        //     }, 0);
+        //     const paidUserclassesCount = userclasses.reduce((count, userclass) => {
+        //         if (userclass.paymentStatus === "paid") {
+        //             return count + 1;
+        //         } else {
+        //             return count;
+        //         }
+        //     }, 0);
+        //     const bookedUserclassesCount = userclasses.reduce((count, userclass) => {
+        //         if (userclass.paymentStatus === "booked") {
+        //             return count + 1;
+        //         } else {
+        //             return count;
+        //         }
+        //     }, 0);
+        //     const approvedClassesCount = allclasses.reduce((count, allclass) => {
+        //         if (allclass.status === "approved") {
+        //             return count + 1;
+        //         } else {
+        //             return count;
+        //         }
+        //     }, 0);
+        //     const deniedClassesCount = allclasses.reduce((count, allclass) => {
+        //         if (allclass.status === "denied") {
+        //             return count + 1;
+        //         } else {
+        //             return count;
+        //         }
+        //     }, 0);
+
+        //     const stats = { totalClasses, deniedClassesCount, totalusersCount, instructorsCount, studentsCount, approvedClassesCount, paidUserclassesCount, bookedUserclassesCount }
+        //     res.send(stats);
+        // });
 
         /* Admin Related Api */
         // check admin
         app.get('/users/admin/checkadmin/:email', verifyJWT, async (req, res) => {
             const email = req?.params?.email;
 
-            // if (req?.decoded?.email !== email) {
-            //     return res.send({ admin: false })
-            // }
+            if (req?.decoded?.email !== email) {
+                return res.send({ admin: false })
+            }
             const query = { email: email }
             const user = await usersCollection.findOne(query);
+
             const result = { admin: user?.role === 'admin' }
             res.send(result);
         })
@@ -332,6 +391,60 @@ async function run() {
             res.send(result);
         });
 
+        // Admin Statistics
+        app.get('/users/admin/statistics', verifyJWT, verifyAdmin, async (req, res) => {
+            const allclasses = await classCollection.find().toArray();
+            const userclasses = await userClassCollection.find().toArray();
+            const users = await usersCollection.find().toArray();
+
+            const totalClasses = allclasses.length;
+            const totalusersCount = users.length;
+            const instructorsCount = users.reduce((count, user) => {
+                if (user.role === "instructor") {
+                    return count + 1;
+                } else {
+                    return count;
+                }
+            }, 0);
+            const studentsCount = users.reduce((count, user) => {
+                if (user.role !== "instructor" && user.role !== "admin") {
+                    return count + 1;
+                } else {
+                    return count;
+                }
+            }, 0);
+            const paidUserclassesCount = userclasses.reduce((count, userclass) => {
+                if (userclass.paymentStatus === "paid") {
+                    return count + 1;
+                } else {
+                    return count;
+                }
+            }, 0);
+            const bookedUserclassesCount = userclasses.reduce((count, userclass) => {
+                if (userclass.paymentStatus === "booked") {
+                    return count + 1;
+                } else {
+                    return count;
+                }
+            }, 0);
+            const approvedClassesCount = allclasses.reduce((count, allclass) => {
+                if (allclass.status === "approved") {
+                    return count + 1;
+                } else {
+                    return count;
+                }
+            }, 0);
+            const deniedClassesCount = allclasses.reduce((count, allclass) => {
+                if (allclass.status === "denied") {
+                    return count + 1;
+                } else {
+                    return count;
+                }
+            }, 0);
+
+            const stats = { totalClasses, deniedClassesCount, totalusersCount, instructorsCount, studentsCount, approvedClassesCount, paidUserclassesCount, bookedUserclassesCount }
+            res.send(stats);
+        });
 
         /* Payment Related API */
         // Payment Details
